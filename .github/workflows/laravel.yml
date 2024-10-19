@@ -1,0 +1,44 @@
+name: Laravel
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  laravel-tests:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: 'mysql/mysql-server:8.0'
+        ports:
+          - 4444:3306
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.DB_DATABASE }}
+          MYSQL_USER: ${{ secrets.DB_USERNAME }}
+          MYSQL_PASSWORD: ${{ secrets.DB_PASSWORD }}
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3' # Match the PHP version in Sail
+          extensions: mbstring, pdo, xml, bcmath
+          tools: composer, mysql
+
+      - name: Install Dependencies
+        run: |
+          cp .env.example .env
+          composer install
+          php artisan key:generate
+
+      - name: Start Sail and Run Tests
+        run: |
+          ./vendor/bin/sail up -d
+          ./vendor/bin/sail artisan migrate
+          ./vendor/bin/sail test
+   
