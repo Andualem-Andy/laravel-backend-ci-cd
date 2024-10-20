@@ -40,14 +40,14 @@ pipeline {
         stage('Start Application') {
             steps {
                 // Ensure your application is running
-                sh 'sail up -d'
+                sh './vendor/bin/sail up -d'
             }
         }
     }
     post {
         always {
             // Clean up Docker containers after build
-            sh 'sail down' // Clean up local
+            sh './vendor/bin/sail down' // Clean up local
         }
         success {
             echo 'Build and tests completed successfully!'
