@@ -1,10 +1,16 @@
 pipeline {
-    agent any // This can be changed to a specific docker agent if needed
+    agent any
     stages {
         stage('Checkout') {
             steps {
                 // Pull the code from your repository
                 git url: 'https://github.com/Andualem-Andy/laravel-backend-ci-cd.git', branch: 'main'
+            }
+        }
+        stage('Setup') {
+            steps {
+                // Add vendor/bin to the PATH
+                sh 'export PATH=$PATH:./vendor/bin'
             }
         }
         stage('Build') {
