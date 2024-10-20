@@ -1,53 +1,38 @@
 pipeline {
-    agent {
-        docker {
-            image 'docker:latest' // Use the Docker image
-            args '--privileged' // Required for Docker-in-Docker
-        }
-    }
+    agent any
 
     stages {
         stage('Checkout') {
             steps {
                 // Pull the code from your repository
-                git url: 'https://github.com/Andualem-Andy/laravel-backend-ci-cd.git', branch: 'main'
+                git url: 'https://github.com/yourusername/your-laravel-project.git', branch: 'main'
             }
         }
-        stage('Setup') {
+        stage('Install Ansible') {
             steps {
-                // Install dependencies using Composer
-                sh 'composer install'
+                // Ensure Ansible is installed in the Jenkins environment
+                sh 'apt-get update && apt-get install -y ansible'
             }
         }
-        stage('Build') {
+        stage('Run Ansible Playbook') {
             steps {
-                // Start the Sail environment
-                sh './vendor/bin/sail up -d'
-            }
-        }
-        stage('Run Tests') {
-            steps {
-                // Run your PHPUnit tests
-                sh './vendor/bin/sail test'
-            }
-        }
-        stage('Run Migrations') {
-            steps {
-                // Run database migrations
-                sh './vendor/bin/sail artisan migrate'
+                script {
+                    // Run the Ansible playbook to install Laravel dependencies
+                    sh 'ansible-playbook -i ansible/inventory ansible/install_laravel_dependencies.yml'
+                }
             }
         }
     }
     post {
         always {
-            // Clean up Docker containers after build
-            sh './vendor/bin/sail down' // Clean up Docker environment
+            echo 'Cleaning up...'
+            // Any cleanup steps if necessary
         }
         success {
-            echo 'Build and tests completed successfully!'
+            echo 'Build completed successfully!'
         }
         failure {
-            echo 'Build or tests failed!'
+            echo 'Build failed!'
         }
     }
 }
