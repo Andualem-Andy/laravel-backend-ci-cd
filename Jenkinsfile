@@ -1,5 +1,6 @@
 pipeline {
-    agent any
+    agent any // You can also specify a Docker agent with a custom image
+
     stages {
         stage('Checkout') {
             steps {
@@ -9,7 +10,7 @@ pipeline {
         }
         stage('Setup') {
             steps {
-                // Ensure composer is installed and then install dependencies
+                // Check if Composer is installed and install dependencies
                 sh 'composer install'
             }
         }
@@ -28,25 +29,25 @@ pipeline {
         }
         stage('Install Dependencies') {
             steps {
-                // Install Composer dependencies
+                // Install Composer dependencies using Sail
                 sh './vendor/bin/sail composer install'
             }
         }
         stage('Run Tests') {
             steps {
-                // Run your PHPUnit tests
+                // Run your PHPUnit tests using Sail
                 sh './vendor/bin/sail test'
             }
         }
         stage('Run Migrations') {
             steps {
-                // Run database migrations
+                // Run database migrations using Sail
                 sh './vendor/bin/sail artisan migrate'
             }
         }
         stage('Start Application') {
             steps {
-                // Ensure your application is running
+                // Ensure your application is running (optional if already started)
                 sh './vendor/bin/sail up -d'
             }
         }
