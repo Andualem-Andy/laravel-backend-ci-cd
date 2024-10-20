@@ -9,32 +9,39 @@ pipeline {
         }
         stage('Setup') {
             steps {
-                // Add vendor/bin to the PATH
-                sh 'export PATH=$PATH:./vendor/bin'
+                // Ensure composer is installed and then install dependencies
+                sh 'composer install'
+            }
+        }
+        stage('Verify Sail') {
+            steps {
+                // Check if the sail script exists
+                sh 'ls -la ./vendor/bin' // List contents of vendor/bin
+                sh 'ls -la ./vendor/bin/sail' // Check if sail exists
             }
         }
         stage('Build') {
             steps {
                 // Start the Sail environment if necessary
-                sh 'sail up -d'
+                sh './vendor/bin/sail up -d'
             }
         }
         stage('Install Dependencies') {
             steps {
                 // Install Composer dependencies
-                sh 'sail composer install'
+                sh './vendor/bin/sail composer install'
             }
         }
         stage('Run Tests') {
             steps {
                 // Run your PHPUnit tests
-                sh 'sail test'
+                sh './vendor/bin/sail test'
             }
         }
         stage('Run Migrations') {
             steps {
                 // Run database migrations
-                sh 'sail artisan migrate'
+                sh './vendor/bin/sail artisan migrate'
             }
         }
         stage('Start Application') {
@@ -47,7 +54,7 @@ pipeline {
     post {
         always {
             // Clean up Docker containers after build
-            sh './vendor/bin/sail down' // Clean up local
+            sh './vendor/bin/sail down' // Clean up Docker environment with full path
         }
         success {
             echo 'Build and tests completed successfully!'
