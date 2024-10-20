@@ -14,6 +14,9 @@ pipeline {
                     // Ensure Ansible is installed in the Jenkins environment
                     sh 'apt-get update && apt-get install -y ansible'
 
+                    // Verify Ansible installation
+                    sh 'ansible --version'
+
                     // Run the Ansible playbook to install dependencies
                     sh 'ansible-playbook -i ansible/inventory ansible/install_laravel_dependencies.yml'
                 }
