@@ -1,5 +1,9 @@
 pipeline {
-    agent any // You can also specify a Docker agent with a custom image
+    agent any // Use a specific agent if possible, e.g., docker { image 'your-php-image' }
+
+    environment {
+        COMPOSER_HOME = "${WORKSPACE}/.composer" // Specify Composer home if needed
+    }
 
     stages {
         stage('Checkout') {
@@ -10,8 +14,14 @@ pipeline {
         }
         stage('Setup') {
             steps {
-                // Check if Composer is installed and install dependencies
-                sh 'composer install'
+                script {
+                    // Check if Composer is installed, and install dependencies
+                    if (!fileExists('composer.phar')) {
+                        echo 'Composer is not installed. Installing Composer...'
+                        sh 'curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer'
+                    }
+                    sh 'composer install'
+                }
             }
         }
         stage('Verify Sail') {
@@ -23,8 +33,11 @@ pipeline {
         }
         stage('Build') {
             steps {
-                // Start the Sail environment if necessary
-                sh './vendor/bin/sail up -d'
+                // Start the Sail environment
+                script {
+                    // Start Sail if not already running
+                    sh 'if ! ./vendor/bin/sail ps | grep -q "Up"; then ./vendor/bin/sail up -d; fi'
+                }
             }
         }
         stage('Install Dependencies') {
@@ -47,7 +60,7 @@ pipeline {
         }
         stage('Start Application') {
             steps {
-                // Ensure your application is running (optional if already started)
+                // Ensure your application is running
                 sh './vendor/bin/sail up -d'
             }
         }
@@ -55,7 +68,9 @@ pipeline {
     post {
         always {
             // Clean up Docker containers after build
-            sh './vendor/bin/sail down' // Clean up Docker environment with full path
+            script {
+                sh './vendor/bin/sail down' // Clean up Docker environment with full path
+            }
         }
         success {
             echo 'Build and tests completed successfully!'
