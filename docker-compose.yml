@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'php:8.2-cli' // Use a PHP Docker image
+            args '-u root' // Run as root for package installations
+        }
+    }
 
     options {
         // Fail the build after 1 hour
@@ -24,11 +29,12 @@ pipeline {
             }
         }
 
-        stage('Install Laravel Sail Dependencies') {
+        stage('Install Dependencies') {
             steps {
                 script {
-                    // Install Laravel Sail (only needed if it's not committed to your repo)
-                    sh 'composer require laravel/sail --dev'
+                    // Install Composer and Laravel Sail dependencies
+                    sh 'composer install --prefer-dist --no-progress --no-interaction'
+                    sh 'composer require laravel/sail --dev' // Ensure Sail is available
                 }
             }
         }
@@ -36,17 +42,11 @@ pipeline {
         stage('Build and Start Docker Containers') {
             steps {
                 script {
+                    // Ensure Sail is executable
+                    sh 'chmod +x ./vendor/bin/sail'
+                    
                     // Build and start the Laravel Sail environment
                     sh './vendor/bin/sail up -d'
-                }
-            }
-        }
-
-        stage('Install PHP Dependencies') {
-            steps {
-                script {
-                    // Install Composer dependencies within the Sail container
-                    sh './vendor/bin/sail composer install --prefer-dist --no-progress --no-interaction'
                 }
             }
         }
@@ -81,22 +81,15 @@ pipeline {
                 }
             }
         }
-
-        stage('Stop and Clean Up') {
-            steps {
-                script {
-                    // Stop the Sail containers after the tests
-                    sh './vendor/bin/sail down'
-                }
-            }
-        }
     }
 
     post {
         always {
-            echo 'Cleaning up Docker containers...'
-            // Ensure Docker containers are stopped and removed
-            sh './vendor/bin/sail down || true'
+            script {
+                echo 'Cleaning up Docker containers...'
+                // Ensure Docker containers are stopped and removed
+                sh './vendor/bin/sail down || true'
+            }
         }
 
         success {
