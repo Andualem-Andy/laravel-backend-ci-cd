@@ -2,33 +2,15 @@
 - name: Install Laravel Dependencies
   hosts: localhost
   tasks:
-    - name: Ensure PHP is installed
-      apt:
-        name: php
-        state: present
-
-    - name: Install Composer
-      apt:
-        name: composer
-        state: present
-
-    - name: Clone Laravel repository
-      git:
-        repo: 'https://github.com/yourusername/your-laravel-project.git'
-        dest: /var/www/laravel-project
-        version: main
+    - name: Change to project directory
+      command: cd /home/andu/file/Devops/laravel-backend-ci-cd
 
     - name: Install Composer dependencies
       command: composer install
       args:
-        chdir: /var/www/laravel-project
+        chdir: /home/andu/file/Devops/laravel-backend-ci-cd
 
     - name: Run Laravel migrations
       command: php artisan migrate
       args:
-        chdir: /var/www/laravel-project
-
-    - name: Run PHPUnit tests
-      command: php artisan test
-      args:
-        chdir: /var/www/laravel-project
+        chdir: /home/andu/file/Devops/laravel-backend-ci-cd
