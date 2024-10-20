@@ -2,37 +2,48 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                // Pull the code from your repository
-                git url: 'https://github.com/yourusername/your-laravel-project.git', branch: 'main'
+                // Pull the code from the Git repository
+                git url: 'https://github.com/Kennibravo/jenkins-laravel.git'
             }
         }
-        stage('Install Laravel Dependencies') {
+
+        stage('Install Dependencies') {
             steps {
-                script {
-                    // Ensure Ansible is installed in the Jenkins environment
-                    sh 'apt-get update && apt-get install -y ansible'
+                // Install Laravel dependencies using Composer
+                sh 'composer install'
+            }
+        }
 
-                    // Verify Ansible installation
-                    sh 'ansible --version'
+        stage('Setup Environment') {
+            steps {
+                // Copy the example environment file and generate the application key
+                sh 'cp .env.example .env'
+                sh 'php artisan key:generate'
+            }
+        }
 
-                    // Run the Ansible playbook to install dependencies
-                    sh 'ansible-playbook -i ansible/inventory ansible/install_laravel_dependencies.yml'
-                }
+        stage('Run Tests') {
+            steps {
+                // Run unit tests with PHPUnit
+                sh './vendor/bin/phpunit'
             }
         }
     }
+
     post {
+        success {
+            echo 'Build and tests ran successfully!'
+        }
+
+        failure {
+            echo 'Build or tests failed. Please check the logs for details.'
+        }
+
         always {
             echo 'Cleaning up...'
-            // Any cleanup steps if necessary
-        }
-        success {
-            echo 'Build completed successfully!'
-        }
-        failure {
-            echo 'Build failed!'
+            // You can add any additional cleanup steps here if needed
         }
     }
 }
