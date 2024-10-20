@@ -8,16 +8,13 @@ pipeline {
                 git url: 'https://github.com/yourusername/your-laravel-project.git', branch: 'main'
             }
         }
-        stage('Install Ansible') {
-            steps {
-                // Ensure Ansible is installed in the Jenkins environment
-                sh 'apt-get update && apt-get install -y ansible'
-            }
-        }
-        stage('Run Ansible Playbook') {
+        stage('Install Laravel Dependencies') {
             steps {
                 script {
-                    // Run the Ansible playbook to install Laravel dependencies
+                    // Ensure Ansible is installed in the Jenkins environment
+                    sh 'apt-get update && apt-get install -y ansible'
+
+                    // Run the Ansible playbook to install dependencies
                     sh 'ansible-playbook -i ansible/inventory ansible/install_laravel_dependencies.yml'
                 }
             }
