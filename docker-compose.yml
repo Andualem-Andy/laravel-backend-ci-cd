@@ -1,104 +1,76 @@
-pipeline {
-    agent {
-        docker {
-            image 'php:8.2-cli' // Use a PHP Docker image
-            args '-u root' // Run as root for package installations
-        }
-    }
+services:
+    laravel.test:
+        build:
+            context: ./vendor/laravel/sail/runtimes/8.3
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP:-1000}'
+        image: sail-8.3/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${APP_PORT:-80}:80'
+            - '${VITE_PORT:-5173}:${VITE_PORT:-5173}'
+        environment:
+            WWWUSER: '${WWWUSER:-1000}'
+            LARAVEL_SAIL: 1
+            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
+            IGNITION_LOCAL_SITES_PATH: '${PWD}'
+        volumes:
+            - /home/andu/file/Devops/laravel-backend-ci-cd:/var/www/html
+        networks:
+            - sail
+            - my-network  # Shared network with Jenkins
+        depends_on:
+            - mysql
 
-    options {
-        // Fail the build after 1 hour
-        timeout(time: 60, unit: 'MINUTES')
+    mysql:
+        image: 'mysql/mysql-server:8.0'
+        ports:
+            - '${FORWARD_DB_PORT:-3306}:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ROOT_HOST: '%'
+            MYSQL_DATABASE: '${DB_DATABASE}'
+            MYSQL_USER: '${DB_USERNAME}'
+            MYSQL_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        volumes:
+            - 'sail-mysql:/var/lib/mysql'
+            - './vendor/laravel/sail/database/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
+        networks:
+            - sail
+            - my-network  # Shared network with Jenkins
+        healthcheck:
+            test:
+                - CMD
+                - mysqladmin
+                - ping
+                - '-p${DB_PASSWORD}'
+            retries: 3
+            timeout: 5s
 
-        // Keep only the last 10 builds to save space
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-    }
+    jenkins:
+        image: 'jenkins/jenkins:lts'
+        container_name: jenkins-container
+        ports:
+            - '9090:8080'
+            - '50000:50000'
+        volumes:
+            - 'jenkins_home:/var/jenkins_home'
+            - /home/andu/file/Devops/laravel-backend-ci-cd:/var/www/html
+        networks:
+            - my-network  # Shared network with Laravel
+    
+networks:
+    sail:
+        driver: bridge
+    my-network:  # Define shared network
+        driver: bridge
 
-    environment {
-        // Project-specific environment variables
-        SAIL_ENVIRONMENT_FILE = '.env'
-        COMPOSE_PROJECT_NAME = 'laravel-ci-cd-pipeline'
-        DOCKER_BUILDKIT = 1
-    }
-
-    stages {
-        stage('Checkout') {
-            steps {
-                // Checkout the code from the Git repository
-                git url: 'https://github.com/Andualem-Andy/laravel-backend-ci-cd.git', branch: 'main'
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                script {
-                    // Install Composer and Laravel Sail dependencies
-                    sh 'composer install --prefer-dist --no-progress --no-interaction'
-                    sh 'composer require laravel/sail --dev' // Ensure Sail is available
-                }
-            }
-        }
-
-        stage('Build and Start Docker Containers') {
-            steps {
-                script {
-                    // Ensure Sail is executable
-                    sh 'chmod +x ./vendor/bin/sail'
-                    
-                    // Build and start the Laravel Sail environment
-                    sh './vendor/bin/sail up -d'
-                }
-            }
-        }
-
-        stage('Run Migrations') {
-            steps {
-                script {
-                    // Run Laravel migrations within the container
-                    sh './vendor/bin/sail artisan migrate --force'
-                }
-            }
-        }
-
-        stage('Run Tests') {
-            parallel {
-                stage('PHPUnit Tests') {
-                    steps {
-                        script {
-                            // Run PHPUnit tests
-                            sh './vendor/bin/sail test --parallel'
-                        }
-                    }
-                }
-
-                stage('Static Analysis') {
-                    steps {
-                        script {
-                            // Run static code analysis (optional but good practice)
-                            sh './vendor/bin/sail pint'
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            script {
-                echo 'Cleaning up Docker containers...'
-                // Ensure Docker containers are stopped and removed
-                sh './vendor/bin/sail down || true'
-            }
-        }
-
-        success {
-            echo 'Build completed successfully!'
-        }
-
-        failure {
-            echo 'Build failed! Please check the logs.'
-            // You can add notification hooks here, such as Slack or email
-        }
-    }
-}
+volumes:
+    sail-mysql:
+        driver: local
+    jenkins_home:
+        driver: local
