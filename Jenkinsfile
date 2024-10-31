@@ -11,7 +11,7 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                // Install Laravel dependencies using Composer
+                // Install Laravel dependencies using Composer 
                 sh 'composer install'
             }
         }
